@@ -30,22 +30,17 @@
         android:background="#000"
         android:orientation="horizontal">
 
-        <ToggleButton
+        <ImageView
             android:id="@+id/facing_switch"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_gravity="center_vertical"
-            android:background="@layout/toggle_style"
+            android:src="@drawable/cameraswitch"
             android:checked="false"
             android:textOff=""
-            android:textOn=""/>
+            android:textOn=""
+            app:tint="@color/white" />
 
-        <Spinner
-            android:id="@+id/spinner"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"/>
 
     </LinearLayout>
 

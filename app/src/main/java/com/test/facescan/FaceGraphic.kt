@@ -64,7 +64,7 @@ class FaceGraphic constructor(overlay: GraphicOverlay?,
     // Draws a circle at the position of the detected face, with the face's track id below.
     val x = translateX(face.boundingBox.centerX().toFloat())
     val y = translateY(face.boundingBox.centerY().toFloat())
-    canvas.drawCircle(x, y, FACE_POSITION_RADIUS, facePositionPaint)
+
 
 
     // Calculate positions.
@@ -81,6 +81,7 @@ class FaceGraphic constructor(overlay: GraphicOverlay?,
       strokeWidth = BOX_STROKE_WIDTH
     }
 
+    canvas.drawCircle(x, y, FACE_POSITION_RADIUS, facePositionPaint)
     canvas.drawRect(left, top, right, bottom, rectanglePaint)
     // Decide color based on face ID
     val colorID = if (face.trackingId == null) 0 else abs(face.trackingId!! % NUM_COLORS)

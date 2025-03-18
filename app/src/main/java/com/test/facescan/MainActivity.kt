@@ -9,7 +9,9 @@ import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.CompoundButton
+import android.widget.ImageView
 import android.widget.Toast
+import android.widget.ToggleButton
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.mlkit.common.model.LocalModel
@@ -21,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     private var preview: CameraSourcePreview? = null
     private var graphicOverlay: GraphicOverlay? = null
     private var selectedModel = FACE_DETECTION
-
+    private var isChecked = false
 
     companion object {
         private const val FACE_DETECTION = "Face Detection"
@@ -43,6 +45,21 @@ class MainActivity : AppCompatActivity() {
         FaceDetectorProcessor(this, faceDetectorOptions)
         if (!allRuntimePermissionsGranted()) {
             getRuntimePermissions()
+        }
+
+        val facingSwitch = findViewById<ImageView>(R.id.facing_switch)
+        facingSwitch.setOnClickListener {
+            Log.d(TAG, "Set facing")
+            isChecked = !isChecked
+            if (cameraSource != null) {
+                if (isChecked) {
+                    cameraSource?.setFacing(CameraSource.CAMERA_FACING_FRONT)
+                } else {
+                    cameraSource?.setFacing(CameraSource.CAMERA_FACING_BACK)
+                }
+            }
+            preview?.stop()
+            startCameraSource()
         }
         preview = findViewById(R.id.preview_view)
         if (preview == null) {
