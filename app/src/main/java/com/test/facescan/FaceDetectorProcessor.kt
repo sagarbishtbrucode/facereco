@@ -10,10 +10,11 @@ import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import com.google.mlkit.vision.face.FaceLandmark
 import java.util.Locale
+import kotlin.math.abs
 
 class FaceDetectorProcessor(context: Context, detectorOptions: FaceDetectorOptions?) :
     VisionProcessorBase<List<Face>>(context) {
-    private val MIN_ANGLE_VARIATION = 3.0f
+    private val MIN_ANGLE_VARIATION = 1.0
     private val MAX_HISTORY_SIZE = 10
     private val detector: FaceDetector
     private val faceAnglesHistory = mutableMapOf<Int, MutableList<FaceAngles>>()
@@ -171,31 +172,49 @@ class FaceDetectorProcessor(context: Context, detectorOptions: FaceDetectorOptio
     }
 
     private fun isRealFace(face: Face): Boolean {
-        // If we don't have tracking ID or not enough history, be conservative
         if (face.trackingId == null || faceAnglesHistory[face.trackingId!!]?.size ?: 0 < 3) {
             return false
         }
 
         val history = faceAnglesHistory[face.trackingId!!] ?: return false
 
-        // Calculate variation in Euler angles
+        // Calculate variation for each Euler angle
         val xVariation = calculateVariation(history.map { it.x })
         val yVariation = calculateVariation(history.map { it.y })
         val zVariation = calculateVariation(history.map { it.z })
 
-        // Log the variations for debugging
-        Log.d(TAG, "Face ID: ${face.trackingId}, X variation: $xVariation, Y variation: $yVariation, Z variation: $zVariation")
+        // Calculate range (max - min) for each angle
+        val xRange = history.maxOf { it.x } - history.minOf { it.x }
+        val yRange = history.maxOf { it.y } - history.minOf { it.y }
+        val zRange = history.maxOf { it.z } - history.minOf { it.z }
 
-        // Consider the face real if there's significant variation in at least two angles
+        Log.d(TAG, "Face ID: ${face.trackingId}, X variation: $xVariation, Y variation: $yVariation, Z variation: $zVariation")
+        Log.d(TAG, "Face ID: ${face.trackingId}, X range: $xRange, Y range: $yRange, Z range: $zRange")
+
+        // **Condition 1: Significant variation in at least two angles across consecutive frames**
         val significantVariations = listOf(xVariation, yVariation, zVariation)
             .count { it > MIN_ANGLE_VARIATION }
 
-        return significantVariations >= 2
+        // **Condition 2: Range check - a significant range indicates motion over time**
+        val significantRange = listOf(xRange, yRange, zRange)
+            .count { it > MIN_ANGLE_VARIATION }
+
+        // **New Condition: Ensure sustained variation over last 3 frames**
+        val recentAngles = history.takeLast(3)
+        val consistentVariation = recentAngles.zipWithNext().all { (prev, next) ->
+            abs(prev.x - next.x) > 0.5f ||
+                    abs(prev.y - next.y) > 0.5f ||
+                    abs(prev.z - next.z) > 0.5f
+        }
+
+        return (significantVariations >= 2 && significantRange >= 1 && consistentVariation)
     }
+
+
     private fun calculateVariation(values: List<Float>): Float {
         if (values.isEmpty()) return 0f
-        val min = values.minOrNull() ?: 0f
-        val max = values.maxOrNull() ?: 0f
-        return max - min
+        val average = values.average().toFloat()
+        return values.map { abs(it - average) }.average().toFloat()
     }
+
 }

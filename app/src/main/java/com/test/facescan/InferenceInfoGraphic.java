@@ -26,7 +26,7 @@ import androidx.annotation.Nullable;
 public class InferenceInfoGraphic extends GraphicOverlay.Graphic {
 
   private static final int TEXT_COLOR = Color.WHITE;
-  private static final float TEXT_SIZE = 60.0f;
+  private static final float TEXT_SIZE = 30.0f;
 
   private final Paint textPaint;
   private final GraphicOverlay overlay;
@@ -63,7 +63,7 @@ public class InferenceInfoGraphic extends GraphicOverlay.Graphic {
   @Override
   public synchronized void draw(Canvas canvas) {
     float x = TEXT_SIZE * 0.5f;
-    float y = TEXT_SIZE * 1.5f;
+    float y = TEXT_SIZE * 1.0f;
 
     canvas.drawText(
         "InputImage size: " + overlay.getImageHeight() + "x" + overlay.getImageWidth(),

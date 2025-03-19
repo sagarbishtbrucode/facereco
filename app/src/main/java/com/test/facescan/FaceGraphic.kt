@@ -83,6 +83,30 @@ class FaceGraphic constructor(overlay: GraphicOverlay?,
 
     canvas.drawCircle(x, y, FACE_POSITION_RADIUS, facePositionPaint)
     canvas.drawRect(left, top, right, bottom, rectanglePaint)
+
+    labelPaints[0].textSize = 40.0f  // Adjust size as needed
+
+    val label = if (isRealFace) "Real Face" else "Fake Face"
+    val labelWidth = labelPaints[0].measureText(label)
+    val labelHeight = labelPaints[0].textSize + 10  // Extra padding
+
+// Draw solid background rectangle for the label
+    canvas.drawRect(
+      left - BOX_STROKE_WIDTH,
+      top - labelHeight - 10,  // Position the label above the box with some padding
+      left + labelWidth + BOX_STROKE_WIDTH,
+      top,
+      labelPaints[0]
+    )
+
+    labelPaints[0].color = Color.WHITE  // Ensure text color contrasts with background
+    canvas.drawText(
+      label,
+      left + (right - left) / 2 - labelWidth / 2,
+      top - 10,  // Adjust text vertical position slightly above the rectangle
+      labelPaints[0]
+    )
+
     // Decide color based on face ID
     val colorID = if (face.trackingId == null) 0 else abs(face.trackingId!! % NUM_COLORS)
 
