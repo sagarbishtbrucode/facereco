@@ -15,6 +15,7 @@ import kotlin.math.abs
 class FaceDetectorProcessor(context: Context, detectorOptions: FaceDetectorOptions?) :
     VisionProcessorBase<List<Face>>(context) {
     private val MIN_ANGLE_VARIATION = 1.0
+    private val TAG0 = "MainActivit"
     private val MAX_HISTORY_SIZE = 10
     private val detector: FaceDetector
     private val faceAnglesHistory = mutableMapOf<Int, MutableList<FaceAngles>>()
@@ -41,6 +42,7 @@ class FaceDetectorProcessor(context: Context, detectorOptions: FaceDetectorOptio
     }
 
     override fun onSuccess(faces: List<Face>, graphicOverlay: GraphicOverlay) {
+        Log.i(TAG0, "OnSuccess")
         for (face in faces) {
             updateFaceAnglesHistory(face)
             val isRealFace = isRealFace(face)
@@ -70,6 +72,7 @@ class FaceDetectorProcessor(context: Context, detectorOptions: FaceDetectorOptio
     }
     override fun onFailure(e: Exception) {
         Log.e(TAG, "Face detection failed $e")
+        Log.e(TAG0, "Face detection failed $e")
     }
     private fun cleanupFaceTrackingData(currentFaces: List<Face>) {
         // Get the set of currently tracked face IDs

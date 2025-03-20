@@ -7,56 +7,31 @@
     android:keepScreenOn="true"
     android:orientation="vertical">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_weight="0.5"
-        android:background="@color/black">
 
-        <ImageView
-            android:id="@+id/pv1"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_margin="40dp"
-            android:src="@drawable/testimage"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.5" />
 
-        <ImageView
-            android:id="@+id/addimage1"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:visibility="gone"
-            android:layout_margin="20dp"
-            android:src="@drawable/addimagex"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:padding="10dp"
-        android:text="0% Match"
-        android:textSize="15dp"
-        android:textStyle="bold" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_weight="1">
+        <androidx.camera.view.PreviewView
+            android:id="@+id/view_finder"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+
+            app:scaleType="fillStart"
+
+            app:layout_constraintBottom_toTopOf="@+id/control"
+            app:layout_constraintTop_toTopOf="parent"/>
 
         <com.test.facescan.CameraSourcePreview
             android:id="@+id/preview_view"
             android:layout_width="match_parent"
             android:layout_height="0dp"
+
             app:layout_constraintBottom_toTopOf="@+id/control"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="@+id/view_finder" />
 
         <com.test.facescan.GraphicOverlay
             android:id="@+id/graphic_overlay"
@@ -127,5 +102,42 @@
                 app:tint="@color/white" />
         </LinearLayout>
 
+    </androidx.constraintlayout.widget.ConstraintLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="10dp"
+        android:text="0% Match"
+        android:textSize="15dp"
+        android:textStyle="bold" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@color/black">
+
+        <ImageView
+            android:id="@+id/pv1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_margin="40dp"
+            android:src="@drawable/testimage"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.5" />
+
+        <ImageView
+            android:id="@+id/addimage1"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:visibility="gone"
+            android:layout_margin="20dp"
+            android:src="@drawable/addimagex"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </LinearLayout>

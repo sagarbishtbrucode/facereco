@@ -1,6 +1,7 @@
 package com.test.facescan
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
@@ -25,11 +26,22 @@ import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.Toast
 import android.widget.ToggleButton
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.mlkit.common.model.LocalModel
+import java.io.File
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.ArrayList
+import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private var cameraSource: CameraSource? = null
@@ -43,16 +55,20 @@ class MainActivity : AppCompatActivity() {
     private var isChecked = false
     private var imageMaxWidth = 0
     private var imageMaxHeight = 0
+    lateinit var viewFinder:PreviewView
     private var selectedSize: String? = SIZE_SCREEN
     private var imageUri: Uri? = null
     private var imageProcessor: VisionImageProcessor? = null
     private var imageProcessor2: VisionImageProcessor? = null
+    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var outputDirectory: File
+    private var imageCapture: ImageCapture? = null
 
     companion object {
         private const val FACE_DETECTION = "Face Detection"
         private const val TAG = "MainActivity"
         private const val PERMISSION_REQUESTS = 1
-
+        private const val FileNameFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
         private const val KEY_IMAGE_URI = "com.google.mlkit.vision.demo.KEY_IMAGE_URI"
         private const val KEY_IMAGE_MAX_WIDTH = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_WIDTH"
         private const val KEY_IMAGE_MAX_HEIGHT = "com.google.mlkit.vision.demo.KEY_IMAGE_MAX_HEIGHT"
@@ -87,6 +103,7 @@ class MainActivity : AppCompatActivity() {
             getRuntimePermissions()
         }
         preview1 = findViewById(R.id.pv1)
+        viewFinder = findViewById(R.id.view_finder)
         val facingSwitch = findViewById<ImageView>(R.id.facing_switch)
         facingSwitch.setOnClickListener {
             Log.d(TAG, "Set facing")
@@ -98,6 +115,7 @@ class MainActivity : AppCompatActivity() {
                     cameraSource?.setFacing(CameraSource.CAMERA_FACING_BACK)
                 }
             }
+            setUpImageCapture()
             preview?.stop()
             startCameraSource()
         }
@@ -109,6 +127,10 @@ class MainActivity : AppCompatActivity() {
         graphicOverlay = findViewById(R.id.graphic_overlay)
         if (graphicOverlay == null) {
             Log.d(TAG, "graphicOverlay is null")
+        }
+
+        findViewById<ImageView>(R.id.take_picture).setOnClickListener {
+            takePhoto()
         }
         isLandScape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (savedInstanceState != null) {
@@ -124,7 +146,8 @@ class MainActivity : AppCompatActivity() {
                 if (itemId == R.id.select_images_from_local) {
                     startChooseImageIntentForResult()
                     return@setOnMenuItemClickListener true
-                } else if (itemId == R.id.take_photo_using_camera) {
+                }
+                else if (itemId == R.id.take_photo_using_camera) {
                     startCameraIntentForResult()
                     return@setOnMenuItemClickListener true
                 }
@@ -152,6 +175,84 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setUpImageCapture() {
+
+        imageCapture = ImageCapture.Builder().build()
+        cameraExecutor = Executors.newSingleThreadExecutor()
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.setSurfaceProvider(viewFinder.surfaceProvider)
+                }
+            imageCapture = ImageCapture.Builder().build()
+            PreviewView.ImplementationMode.COMPATIBLE
+            val cameraSelector =
+                CameraSelector.DEFAULT_BACK_CAMERA
+            try {
+
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    this, cameraSelector, preview, imageCapture
+                )
+            } catch (e: Exception) {
+                Log.d(TAG, "Use case binding failed ${e.message}")
+            }
+
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    @SuppressLint("NewApi")
+    private fun takePhoto() = try {
+        val imageCapture = imageCapture ?: throw IOException("Camera not connected")
+        val name = SimpleDateFormat(FileNameFormat, Locale.US)
+            .format(System.currentTimeMillis())
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
+            }
+        }
+        val outputOptions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            ImageCapture.OutputFileOptions
+                .Builder(
+                    contentResolver,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ).build()
+        else{
+            outputDirectory = getOutputDirectory()
+            val file = createFile(
+                outputDirectory,
+                "yyyy-MM-dd-HH-mm-ss-SSS",
+                ".jpg"
+            )
+            ImageCapture.OutputFileOptions
+                .Builder(file).build()
+        }
+        imageCapture.takePicture(
+            outputOptions, ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) {
+
+                    Log.d(TAG, "Photo capture failed $exc")
+                    println("Photo capture failed ita ex: $exc")
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val resultIntent = Intent()
+                    resultIntent.putExtra("outputUri", output.savedUri.toString())
+                    setResult(10, resultIntent)
+                    finish()
+                }
+            }
+        )
+    } catch (e: Exception) {
+        println("Photo capture failed: Catch: ${e.message}")
+    }
     private val targetedWidthHeight: Pair<Int, Int>
         get() {
             val targetWidth: Int
@@ -176,7 +277,23 @@ class MainActivity : AppCompatActivity() {
             }
             return Pair(targetWidth, targetHeight)
         }
-
+    private fun createFile(baseFolder: File, format: String, extension: String) =
+        File(
+            baseFolder, SimpleDateFormat(format, Locale.US)
+                .format(System.currentTimeMillis()) + extension
+        )
+    private fun getOutputDirectory(): File {
+        val mediaDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            externalMediaDirs.firstOrNull()?.let {
+                File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
+            }
+        } else {
+            getExternalFilesDir(null)?.let {
+                File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
+            }
+        }
+        return if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
+    }
     private fun startCameraIntentForResult() { // Clean up last time's image
         imageUri = null
         preview1!!.setImageBitmap(null)
@@ -198,7 +315,7 @@ class MainActivity : AppCompatActivity() {
         try {
             when (model) {
                 FACE_DETECTION -> {
-                    Log.i(TAG, "Using Face Detector Processor")
+                    Log.i(TAG, "Using Face Detector Processor1")
                     val faceDetectorOptions = PreferenceUtils.getFaceDetectorOptions(this)
                     cameraSource!!.setMachineLearningFrameProcessor(
                         FaceDetectorProcessor(this, faceDetectorOptions)
@@ -242,7 +359,7 @@ class MainActivity : AppCompatActivity() {
         if (allRuntimePermissionsGranted()) {
             createCameraSource(selectedModel)
             createImageProcessor()
-            startCameraSource()
+      //      startCameraSource()
         } else {
             Toast.makeText(this, "Please allow the requested permissions!!", Toast.LENGTH_SHORT)
                 .show()
@@ -316,7 +433,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun createImageProcessor() {
         try {
-            Log.i(TAG, "Using Face Detector Processor")
+            Log.i(TAG, "Using Face Detector Processor0")
             val faceDetectorOptions = PreferenceUtils.getFaceDetectorOptions(this)
             imageProcessor2 = FaceDetectorProcessor(this, faceDetectorOptions)
 
