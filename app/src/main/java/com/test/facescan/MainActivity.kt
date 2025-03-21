@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var cameraSource: CameraSource? = null
     private var preview: CameraSourcePreview? = null
     private var preview1: ImageView? = null
+    private var imagePreview: ImageView? = null
     private val REQUEST_IMAGE_CAPTURE = 1001
     private val REQUEST_CHOOSE_IMAGE = 1002
     private var graphicOverlay: GraphicOverlay? = null
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var isChecked = false
     private var imageMaxWidth = 0
     private var imageMaxHeight = 0
-    lateinit var viewFinder:PreviewView
+    lateinit var viewFinder: PreviewView
     private var selectedSize: String? = SIZE_SCREEN
     private var imageUri: Uri? = null
     private var imageProcessor: VisionImageProcessor? = null
@@ -103,6 +104,7 @@ class MainActivity : AppCompatActivity() {
             getRuntimePermissions()
         }
         preview1 = findViewById(R.id.pv1)
+        imagePreview = findViewById(R.id.imagePreview)
         viewFinder = findViewById(R.id.view_finder)
         val facingSwitch = findViewById<ImageView>(R.id.facing_switch)
         facingSwitch.setOnClickListener {
@@ -146,8 +148,7 @@ class MainActivity : AppCompatActivity() {
                 if (itemId == R.id.select_images_from_local) {
                     startChooseImageIntentForResult()
                     return@setOnMenuItemClickListener true
-                }
-                else if (itemId == R.id.take_photo_using_camera) {
+                } else if (itemId == R.id.take_photo_using_camera) {
                     startCameraIntentForResult()
                     return@setOnMenuItemClickListener true
                 }
@@ -171,6 +172,10 @@ class MainActivity : AppCompatActivity() {
             }
         )
         findViewById<ImageView>(R.id.remove_picture).setOnClickListener {
+            graphicOverlay!!.visibility = View.VISIBLE
+            preview!!.visibility = View.VISIBLE
+            viewFinder.visibility = View.VISIBLE
+            imagePreview!!.visibility = View.GONE
             preview1!!.setImageBitmap(null)
         }
     }
@@ -189,10 +194,8 @@ class MainActivity : AppCompatActivity() {
                 }
             imageCapture = ImageCapture.Builder().build()
             PreviewView.ImplementationMode.COMPATIBLE
-            val cameraSelector =
-                CameraSelector.DEFAULT_BACK_CAMERA
+            val cameraSelector = if(isChecked)  CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             try {
-
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
                     this, cameraSelector, preview, imageCapture
@@ -206,7 +209,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("NewApi")
     private fun takePhoto() = try {
-        val imageCapture = imageCapture ?: throw IOException("Camera not connected")
+        imageCapture ?: throw IOException("Camera not connected")
         val name = SimpleDateFormat(FileNameFormat, Locale.US)
             .format(System.currentTimeMillis())
         val contentValues = ContentValues().apply {
@@ -223,7 +226,7 @@ class MainActivity : AppCompatActivity() {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     contentValues
                 ).build()
-        else{
+        else {
             outputDirectory = getOutputDirectory()
             val file = createFile(
                 outputDirectory,
@@ -233,26 +236,37 @@ class MainActivity : AppCompatActivity() {
             ImageCapture.OutputFileOptions
                 .Builder(file).build()
         }
-        imageCapture.takePicture(
+        imageCapture!!.takePicture(
             outputOptions, ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
-
+                    Toast.makeText(this@MainActivity,"Image Error",Toast.LENGTH_SHORT).show()
                     Log.d(TAG, "Photo capture failed $exc")
                     println("Photo capture failed ita ex: $exc")
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val resultIntent = Intent()
+                    Toast.makeText(this@MainActivity,"Image Taken",Toast.LENGTH_SHORT).show()
+                    /*val resultIntent = Intent()
                     resultIntent.putExtra("outputUri", output.savedUri.toString())
                     setResult(10, resultIntent)
-                    finish()
+
+                finish()*/
+                    Log.d(TAG, "Photo captured success")
+                    preview!!.visibility = View.GONE
+                    viewFinder.visibility = View.GONE
+                    imagePreview!!.visibility = View.VISIBLE
+                    imagePreview!!.setImageURI(output.savedUri)
+
+
                 }
             }
         )
     } catch (e: Exception) {
+        Toast.makeText(this@MainActivity,"Photo capture failed: Catch: ",Toast.LENGTH_SHORT).show()
         println("Photo capture failed: Catch: ${e.message}")
     }
+
     private val targetedWidthHeight: Pair<Int, Int>
         get() {
             val targetWidth: Int
@@ -277,11 +291,13 @@ class MainActivity : AppCompatActivity() {
             }
             return Pair(targetWidth, targetHeight)
         }
+
     private fun createFile(baseFolder: File, format: String, extension: String) =
         File(
             baseFolder, SimpleDateFormat(format, Locale.US)
                 .format(System.currentTimeMillis()) + extension
         )
+
     private fun getOutputDirectory(): File {
         val mediaDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             externalMediaDirs.firstOrNull()?.let {
@@ -294,6 +310,7 @@ class MainActivity : AppCompatActivity() {
         }
         return if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
     }
+
     private fun startCameraIntentForResult() { // Clean up last time's image
         imageUri = null
         preview1!!.setImageBitmap(null)
@@ -359,7 +376,7 @@ class MainActivity : AppCompatActivity() {
         if (allRuntimePermissionsGranted()) {
             createCameraSource(selectedModel)
             createImageProcessor()
-      //      startCameraSource()
+                  startCameraSource()
         } else {
             Toast.makeText(this, "Please allow the requested permissions!!", Toast.LENGTH_SHORT)
                 .show()
@@ -513,5 +530,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+    }
 }
