@@ -12,14 +12,18 @@ import com.google.mlkit.vision.face.FaceLandmark
 import java.util.Locale
 import kotlin.math.abs
 
-class FaceDetectorProcessor2(context: Context, detectorOptions: FaceDetectorOptions?) :
-    VisionProcessorBase<List<Face>>(context) {
+class FaceDetectorProcessor2(
+    context: Context, detectorOptions: FaceDetectorOptions?,
+    private val onFacesDetected: (List<Face>,Int) -> Unit
+) :
+    VisionProcessorBase2<List<Face>>(context) {
     private val MIN_ANGLE_VARIATION = 1.0
     private val TAG0 = "FaceDetectorProcessor2"
     private val MAX_HISTORY_SIZE = 10
     private val detector: FaceDetector
     private val faceAnglesHistory = mutableMapOf<Int, MutableList<FaceAngles>>()
     data class FaceAngles(val x: Float, val y: Float, val z: Float)
+
     init {
         val options = detectorOptions
             ?: FaceDetectorOptions.Builder()
@@ -41,16 +45,18 @@ class FaceDetectorProcessor2(context: Context, detectorOptions: FaceDetectorOpti
         return detector.process(image)
     }
 
-    override fun onSuccess(faces: List<Face>, graphicOverlay: GraphicOverlay) {
+    override fun onSuccess(faces: List<Face>, graphicOverlay: GraphicOverlay,bitmapId: Int) {
         Log.i(TAG0, "OnSuccess")
+        onFacesDetected(faces,bitmapId)
         for (face in faces) {
             updateFaceAnglesHistory(face)
             val isRealFace = isRealFace(face)
-            graphicOverlay.add(FaceGraphic(graphicOverlay, isRealFace,face))
+            graphicOverlay.add(FaceGraphic(graphicOverlay, isRealFace, face))
             logExtrasForTesting(face)
         }
         cleanupFaceTrackingData(faces)
     }
+
     private fun updateFaceAnglesHistory(face: Face) {
         // Skip faces without tracking ID
         if (face.trackingId == null) return
@@ -70,10 +76,12 @@ class FaceDetectorProcessor2(context: Context, detectorOptions: FaceDetectorOpti
         }
 
     }
+
     override fun onFailure(e: Exception) {
         Log.e(TAG, "Face detection failed $e")
         Log.e(TAG0, "Face detection failed $e")
     }
+
     private fun cleanupFaceTrackingData(currentFaces: List<Face>) {
         // Get the set of currently tracked face IDs
         val currentIds = currentFaces.mapNotNull { it.trackingId }.toSet()
@@ -144,7 +152,12 @@ class FaceDetectorProcessor2(context: Context, detectorOptions: FaceDetectorOpti
                     } else {
                         val landmarkPosition = landmark.position
                         val landmarkPositionStr =
-                            String.format(Locale.US, "x: %f , y: %f", landmarkPosition.x, landmarkPosition.y)
+                            String.format(
+                                Locale.US,
+                                "x: %f , y: %f",
+                                landmarkPosition.x,
+                                landmarkPosition.y
+                            )
                         Log.v(
                             MANUAL_TESTING_LOG,
                             "Position for face landmark: " +
@@ -191,8 +204,14 @@ class FaceDetectorProcessor2(context: Context, detectorOptions: FaceDetectorOpti
         val yRange = history.maxOf { it.y } - history.minOf { it.y }
         val zRange = history.maxOf { it.z } - history.minOf { it.z }
 
-        Log.d(TAG, "Face ID: ${face.trackingId}, X variation: $xVariation, Y variation: $yVariation, Z variation: $zVariation")
-        Log.d(TAG, "Face ID: ${face.trackingId}, X range: $xRange, Y range: $yRange, Z range: $zRange")
+        Log.d(
+            TAG,
+            "Face ID: ${face.trackingId}, X variation: $xVariation, Y variation: $yVariation, Z variation: $zVariation"
+        )
+        Log.d(
+            TAG,
+            "Face ID: ${face.trackingId}, X range: $xRange, Y range: $yRange, Z range: $zRange"
+        )
 
         // **Condition 1: Significant variation in at least two angles across consecutive frames**
         val significantVariations = listOf(xVariation, yVariation, zVariation)
