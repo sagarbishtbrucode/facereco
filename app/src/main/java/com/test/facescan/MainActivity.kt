@@ -203,7 +203,6 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.d(TAG, "Use case binding failed ${e.message}")
             }
-
         }, ContextCompat.getMainExecutor(this))
     }
 

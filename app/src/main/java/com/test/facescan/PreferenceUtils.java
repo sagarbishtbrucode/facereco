@@ -111,7 +111,7 @@ public class PreferenceUtils {
         getModeTypePreferenceValue(
             context,
             R.string.pref_key_live_preview_face_detection_performance_mode,
-            FaceDetectorOptions.PERFORMANCE_MODE_FAST);
+            FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE);
 
     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
 
